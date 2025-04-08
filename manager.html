@@ -75,6 +75,13 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
+    firebase.auth().onAuthStateChanged(user => {
+      if (!user || user.email !== "ahm7777ed20@gmail.com") {
+        alert("غير مصرح لك بالدخول لهذه الصفحة.");
+        window.location.href = "login.html";
+      }
+    });
+
     function logout() {
       firebase.auth().signOut().then(() => {
         window.location.href = 'login.html';
