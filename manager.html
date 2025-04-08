@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>لوحة المدير</title>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
 </head>
 <body class="bg-gray-100 text-gray-800">
   <div class="container mx-auto p-6">
@@ -21,16 +21,6 @@
         <label class="block text-sm font-medium mb-1">تصفية حسب الفرع:</label>
         <select id="branchFilter" class="rounded border-gray-300 px-3 py-2">
           <option value="">الكل</option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-sm font-medium mb-1">الفترة:</label>
-        <select id="dateFilter" class="rounded border-gray-300 px-3 py-2">
-          <option value="all">الكل</option>
-          <option value="daily">يومي</option>
-          <option value="monthly">شهري</option>
-          <option value="yearly">سنوي</option>
-          <option value="custom">تاريخ محدد</option>
         </select>
       </div>
       <div>
@@ -74,17 +64,21 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+    const auth = firebase.auth();
 
     firebase.auth().onAuthStateChanged(user => {
       if (!user || user.email !== "ahm7777ed20@gmail.com") {
         alert("غير مصرح لك بالدخول لهذه الصفحة.");
-        window.location.href = "login.html";
+        window.location.href = "index.html";
       }
     });
 
     function logout() {
-      firebase.auth().signOut().then(() => {
-        window.location.href = 'login.html';
+      auth.signOut().then(() => {
+        window.location.href = "index.html";
+      }).catch((error) => {
+        console.error("خطأ في تسجيل الخروج:", error);
+        alert("حدث خطأ أثناء تسجيل الخروج.");
       });
     }
 
@@ -109,7 +103,7 @@
           branchSnap.forEach(entry => {
             const { desc, amount, type, timestamp } = entry.val();
             if (desc && amount && type && timestamp) {
-              allData.push({ timestamp, employeeName, branchName, type, desc, amount, key: entry.key });
+              allData.push({ timestamp, employeeName, branchName, type, desc, amount: parseFloat(amount) });
             }
           });
         });
@@ -132,12 +126,12 @@
       tbody.innerHTML = "";
       data.forEach(row => {
         const tr = `<tr>
-          <td class='px-4 py-2 border'>${row.timestamp}</td>
+          <td class='px-4 py-2 border'>${formatDate(row.timestamp)}</td>
           <td class='px-4 py-2 border'>${row.employeeName}</td>
           <td class='px-4 py-2 border'>${row.branchName}</td>
           <td class='px-4 py-2 border'>${row.type}</td>
           <td class='px-4 py-2 border'>${row.desc}</td>
-          <td class='px-4 py-2 border'>${row.amount}</td>
+          <td class='px-4 py-2 border'>${row.amount.toFixed(3)}</td>
         </tr>`;
         tbody.innerHTML += tr;
       });
@@ -145,27 +139,19 @@
 
     function applyFilter() {
       const branch = document.getElementById("branchFilter").value;
-      const period = document.getElementById("dateFilter").value;
-      const now = new Date();
-      const start = new Date(document.getElementById("startDate").value);
-      const end = new Date(document.getElementById("endDate").value);
+      const startInput = document.getElementById("startDate").value;
+      const endInput = document.getElementById("endDate").value;
+
+      const start = startInput ? new Date(startInput + 'T00:00:00') : null;
+      const end = endInput ? new Date(endInput + 'T23:59:59') : null;
 
       const filtered = allData.filter(row => {
         const rowDate = new Date(row.timestamp);
-        let matchDate = true;
-
-        if (period === "daily") {
-          matchDate = rowDate.toDateString() === now.toDateString();
-        } else if (period === "monthly") {
-          matchDate = rowDate.getMonth() === now.getMonth() && rowDate.getFullYear() === now.getFullYear();
-        } else if (period === "yearly") {
-          matchDate = rowDate.getFullYear() === now.getFullYear();
-        } else if (period === "custom" && !isNaN(start) && !isNaN(end)) {
-          matchDate = rowDate >= start && rowDate <= end;
-        }
-
-        return (!branch || row.branchName === branch) && matchDate;
+        const inRange = (!start || rowDate >= start) && (!end || rowDate <= end);
+        const matchesBranch = !branch || row.branchName === branch;
+        return inRange && matchesBranch;
       });
+
       renderTable(filtered);
     }
 
@@ -176,6 +162,18 @@
       window.getSelection().addRange(range);
       document.execCommand("copy");
       alert("تم نسخ الجدول بنجاح!");
+    }
+
+    function formatDate(rawTimestamp) {
+      const date = new Date(rawTimestamp);
+      if (isNaN(date.getTime())) return rawTimestamp;
+
+      const day = date.getDate();
+      const month = date.getMonth() + 1;
+      const year = date.getFullYear();
+      const time = date.toLocaleTimeString('en-US');
+
+      return `${month}/${day}/${year} ${time}`;
     }
   </script>
 </body>
