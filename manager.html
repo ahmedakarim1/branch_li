@@ -9,7 +9,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
 </head>
-<body class="bg-gradient-to-b from-gray-100 to-gray-200 text-gray-800 min-h-screen">
+<body class="bg-gray-100 text-gray-800 min-h-screen">
 
   <div class="max-w-6xl mx-auto px-4 py-6">
     <div class="flex justify-between items-center mb-6">
@@ -19,21 +19,30 @@
       </button>
     </div>
 
-    <!-- Filters -->
+    <!-- فلاتر -->
     <div class="bg-white shadow rounded-lg p-4 mb-6 flex flex-wrap items-center justify-between gap-4">
       <div>
-        <label class="block text-sm text-gray-700 mb-1">تصفية حسب الفرع:</label>
+        <label class="block text-sm font-medium text-gray-700 mb-1">تصفية حسب الفرع:</label>
         <select id="branchFilter" class="border rounded px-3 py-2">
           <option value="">الكل</option>
         </select>
       </div>
       <div>
-        <label class="block text-sm text-gray-700 mb-1">من:</label>
+        <label class="block text-sm font-medium text-gray-700 mb-1">من:</label>
         <input type="date" id="startDate" class="border rounded px-3 py-2" />
       </div>
       <div>
-        <label class="block text-sm text-gray-700 mb-1">إلى:</label>
+        <label class="block text-sm font-medium text-gray-700 mb-1">إلى:</label>
         <input type="date" id="endDate" class="border rounded px-3 py-2" />
+      </div>
+      <div>
+        <label class="block text-sm text-gray-700 mb-1">فلتر سريع:</label>
+        <select onchange="quickFilter(this.value)" class="border rounded px-3 py-2">
+          <option value="">-- اختر --</option>
+          <option value="day">اليوم</option>
+          <option value="month">هذا الشهر</option>
+          <option value="year">هذه السنة</option>
+        </select>
       </div>
       <div class="flex gap-2">
         <button onclick="applyFilter()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow">
@@ -45,17 +54,17 @@
       </div>
     </div>
 
-    <!-- Table -->
+    <!-- الجدول -->
     <div class="overflow-x-auto bg-white rounded-lg shadow">
       <table id="allData" class="min-w-full text-sm text-center">
         <thead class="bg-blue-50 text-blue-800 font-semibold">
           <tr>
-            <th class="py-3 px-4 border">التاريخ</th>
-            <th class="py-3 px-4 border">اسم الموظف</th>
-            <th class="py-3 px-4 border">الفرع</th>
-            <th class="py-3 px-4 border">النوع</th>
-            <th class="py-3 px-4 border">الوصف</th>
-            <th class="py-3 px-4 border">القيمة (دينار)</th>
+            <th class="py-3 px-4 border">📅 التاريخ</th>
+            <th class="py-3 px-4 border">👤 اسم الموظف</th>
+            <th class="py-3 px-4 border">🏢 الفرع</th>
+            <th class="py-3 px-4 border">📌 النوع</th>
+            <th class="py-3 px-4 border">📝 الوصف</th>
+            <th class="py-3 px-4 border">💰 القيمة (د.ب)</th>
           </tr>
         </thead>
         <tbody id="dataBody" class="text-gray-800 bg-white divide-y"></tbody>
@@ -77,6 +86,7 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     const auth = firebase.auth();
+    let allData = [];
 
     auth.onAuthStateChanged(user => {
       if (!user || user.email !== "ahm7777ed20@gmail.com") {
@@ -86,24 +96,17 @@
     });
 
     function logout() {
-      auth.signOut().then(() => {
-        window.location.href = "index.html";
-      }).catch(err => {
-        console.error("Logout Error:", err);
-        alert("حدث خطأ أثناء تسجيل الخروج.");
-      });
+      auth.signOut().then(() => window.location.href = "index.html");
     }
-
-    let allData = [];
 
     db.ref("users").once("value").then(usersSnap => {
       const users = usersSnap.val() || {};
       const branches = new Set();
 
       db.ref("branches").on("value", snapshot => {
+        allData = [];
         const tbody = document.getElementById("dataBody");
         tbody.innerHTML = "";
-        allData = [];
 
         snapshot.forEach(branchSnap => {
           const uid = branchSnap.key;
@@ -144,14 +147,17 @@
       const tbody = document.getElementById("dataBody");
       tbody.innerHTML = "";
       data.forEach(row => {
-        const tr = `<tr>
-          <td class='py-2 px-4 border'>${formatDate(row.timestamp)}</td>
-          <td class='py-2 px-4 border'>${row.employeeName}</td>
-          <td class='py-2 px-4 border'>${row.branchName}</td>
-          <td class='py-2 px-4 border'>${row.type}</td>
-          <td class='py-2 px-4 border'>${row.desc}</td>
-          <td class='py-2 px-4 border'>${row.amount.toFixed(3)}</td>
-        </tr>`;
+        const typeColor = row.type === "دخل" ? "text-green-600 font-bold" : "text-red-600 font-bold";
+        const typeIcon = row.type === "دخل" ? "✅" : "❌";
+        const tr = `
+          <tr>
+            <td class='py-2 px-4 border'>${formatDate(row.timestamp)}</td>
+            <td class='py-2 px-4 border'>${row.employeeName}</td>
+            <td class='py-2 px-4 border'>${row.branchName}</td>
+            <td class='py-2 px-4 border ${typeColor}'>${typeIcon} ${row.type}</td>
+            <td class='py-2 px-4 border'>${row.desc}</td>
+            <td class='py-2 px-4 border font-semibold'>${formatAmount(row.amount)}</td>
+          </tr>`;
         tbody.innerHTML += tr;
       });
     }
@@ -183,16 +189,32 @@
       alert("تم نسخ الجدول بنجاح!");
     }
 
-    function formatDate(rawTimestamp) {
-      const date = new Date(rawTimestamp);
-      if (isNaN(date.getTime())) return rawTimestamp;
+    function formatDate(raw) {
+      const date = new Date(raw);
+      if (isNaN(date.getTime())) return raw;
+      const d = date.getDate(), m = date.getMonth() + 1, y = date.getFullYear();
+      const t = date.toLocaleTimeString('en-US');
+      return `${m}/${d}/${y} ${t}`;
+    }
 
-      const day = date.getDate();
-      const month = date.getMonth() + 1;
-      const year = date.getFullYear();
-      const time = date.toLocaleTimeString('en-US');
+    function formatAmount(num) {
+      return num.toLocaleString('en-US', { minimumFractionDigits: 3 });
+    }
 
-      return `${month}/${day}/${year} ${time}`;
+    function quickFilter(option) {
+      const now = new Date();
+      let start, end = new Date();
+      if (option === 'day') {
+        start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      } else if (option === 'month') {
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+      } else if (option === 'year') {
+        start = new Date(now.getFullYear(), 0, 1);
+      } else return;
+
+      document.getElementById("startDate").value = start.toISOString().split("T")[0];
+      document.getElementById("endDate").value = end.toISOString().split("T")[0];
+      applyFilter();
     }
   </script>
 </body>
