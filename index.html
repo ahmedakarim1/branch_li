@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>تسجيل الدخول</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+  <div class="w-full max-w-sm bg-white rounded-xl shadow-lg p-6">
+    <div class="flex justify-center mb-6">
+      <img src="logo.jpg" alt="الشعار" class="h-16 opacity-80" />
+    </div>
+    <h2 class="text-2xl font-bold text-center text-gray-800 mb-4">تسجيل الدخول</h2>
+
+    <div class="mb-4">
+      <label class="block text-gray-700 mb-1">البريد الإلكتروني</label>
+      <input id="email" type="email" class="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring focus:border-blue-300" />
+    </div>
+    <div class="mb-4">
+      <label class="block text-gray-700 mb-1">كلمة المرور</label>
+      <input id="password" type="password" class="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring focus:border-blue-300" />
+    </div>
+    <button onclick="login()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-md">دخول</button>
+    <p id="status" class="text-center text-sm text-red-500 mt-3"></p>
+
+    <div class="mt-4 text-center">
+      <p class="text-sm text-gray-600">ليس لديك حساب؟ <a href="#" onclick="toggleRegisterForm()" class="text-blue-600 hover:underline">إنشاء حساب جديد</a></p>
+    </div>
+  </div>
+
+  <div id="registerForm" class="w-full max-w-sm bg-white rounded-xl shadow-lg p-6 mt-6 hidden">
+    <h2 class="text-xl font-bold text-center text-gray-800 mb-4">إنشاء حساب</h2>
+    <div class="mb-3">
+      <label class="block text-gray-700 mb-1">البريد الإلكتروني</label>
+      <input id="regEmail" type="email" class="w-full px-4 py-2 border rounded-md" />
+    </div>
+    <div class="mb-3">
+      <label class="block text-gray-700 mb-1">كلمة المرور</label>
+      <input id="regPassword" type="password" class="w-full px-4 py-2 border rounded-md" />
+    </div>
+    <div class="mb-3">
+      <label class="block text-gray-700 mb-1">اسم الموظف</label>
+      <input id="regName" type="text" class="w-full px-4 py-2 border rounded-md" />
+    </div>
+    <div class="mb-3">
+      <label class="block text-gray-700 mb-1">اسم الفرع</label>
+      <input id="regBranch" type="text" class="w-full px-4 py-2 border rounded-md" />
+    </div>
+    <div class="mb-3">
+      <label class="block text-gray-700 mb-1">كود الوصول</label>
+      <input id="regAccessCode" type="text" class="w-full px-4 py-2 border rounded-md" />
+    </div>
+    <button onclick="registerUser()" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-md">تسجيل</button>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyB12tfYkdfVq6xJWyG3aHJkMjQbRgBCCqk",
+      authDomain: "limeted-74dd8.firebaseapp.com",
+      projectId: "limeted-74dd8",
+      storageBucket: "limeted-74dd8.firebasestorage.app",
+      messagingSenderId: "822523906481",
+      appId: "1:822523906481:web:a8673641b56dfd95711590",
+      measurementId: "G-VWD34NDG63"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function toggleRegisterForm() {
+      document.getElementById("registerForm").classList.toggle("hidden");
+    }
+
+    function login() {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      firebase.auth().signInWithEmailAndPassword(email, password)
+        .then(userCredential => {
+          const user = userCredential.user;
+          if (email === "manager@example.com") {
+            window.location.href = "manager.html";
+          } else {
+            window.location.href = "branch.html";
+          }
+        })
+        .catch(error => {
+          document.getElementById("status").innerText = "خطأ: " + error.message;
+        });
+    }
+
+    function registerUser() {
+      const email = document.getElementById("regEmail").value;
+      const password = document.getElementById("regPassword").value;
+      const accessCode = document.getElementById("regAccessCode").value;
+      const name = document.getElementById("regName").value;
+      const branch = document.getElementById("regBranch").value;
+
+      if (!email || !password || !accessCode || !name || !branch) {
+        alert("جميع الحقول مطلوبة.");
+        return;
+      }
+
+      if (accessCode !== "123456") {
+        alert("كود الوصول غير صحيح.");
+        return;
+      }
+
+      firebase.auth().createUserWithEmailAndPassword(email, password)
+        .then(userCredential => {
+          const uid = userCredential.user.uid;
+          db.ref("users/" + uid).set({ name, branch }).then(() => {
+            alert("تم إنشاء الحساب بنجاح!");
+            window.location.href = "branch.html";
+          });
+        })
+        .catch(error => {
+          alert("فشل في إنشاء الحساب: " + error.message);
+        });
+    }
+  </script>
+</body>
+</html>

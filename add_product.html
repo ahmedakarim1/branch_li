@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>إضافة منتج</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 text-gray-800">
+  <div class="container mx-auto p-6">
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-3xl font-bold text-center w-full">إضافة منتج جديد</h2>
+      <button onclick="logout()" class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded">تسجيل الخروج</button>
+    </div>
+
+    <div class="bg-white shadow-md rounded-lg p-4 mb-6">
+      <h3 class="text-xl font-semibold mb-4">إدخال بيانات المنتج</h3>
+      <div class="mb-4">
+        <label class="block text-sm font-medium mb-1">اسم الموظف:</label>
+        <input type="text" id="employeeName" class="w-full px-4 py-2 border rounded-md" placeholder="اسم الموظف">
+      </div>
+      <div class="mb-4">
+        <label class="block text-sm font-medium mb-1">الفرع:</label>
+        <input type="text" id="branchName" class="w-full px-4 py-2 border rounded-md" placeholder="اسم الفرع">
+      </div>
+      <div class="mb-4">
+        <label class="block text-sm font-medium mb-1">النوع:</label>
+        <select id="type" class="w-full px-4 py-2 border rounded-md">
+          <option value="دخل">دخل</option>
+          <option value="خرج">خرج</option>
+        </select>
+      </div>
+      <div class="mb-4">
+        <label class="block text-sm font-medium mb-1">الوصف:</label>
+        <input type="text" id="desc" class="w-full px-4 py-2 border rounded-md" placeholder="الوصف">
+      </div>
+      <div class="mb-4">
+        <label class="block text-sm font-medium mb-1">القيمة (دينار):</label>
+        <input type="number" id="amount" step="0.001" class="w-full px-4 py-2 border rounded-md" placeholder="القيمة">
+      </div>
+      <button onclick="addProduct()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded">إضافة المنتج</button>
+    </div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyB12tfYkdfVq6xJWyG3aHJkMjQbRgBCCqk",
+      authDomain: "limeted-74dd8.firebaseapp.com",
+      projectId: "limeted-74dd8",
+      storageBucket: "limeted-74dd8.firebasestorage.app",
+      messagingSenderId: "822523906481",
+      appId: "1:822523906481:web:a8673641b56dfd95711590",
+      measurementId: "G-VWD34NDG63"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function logout() {
+      firebase.auth().signOut().then(() => {
+        window.location.href = 'login.html';
+      });
+    }
+
+    function addProduct() {
+      const employeeName = document.getElementById("employeeName").value.trim();
+      const branchName = document.getElementById("branchName").value.trim();
+      const type = document.getElementById("type").value;
+      const desc = document.getElementById("desc").value.trim();
+      const amount = parseFloat(document.getElementById("amount").value);
+
+      if (!employeeName || !branchName || !desc || !amount) {
+        alert("يرجى إدخال جميع البيانات.");
+        return;
+      }
+
+      const newEntry = {
+        employeeName,
+        branchName,
+        type,
+        desc,
+        amount,
+        timestamp: new Date().toISOString(),
+      };
+
+      const newRef = db.ref("branches").push();
+      newRef.set(newEntry, (error) => {
+        if (error) {
+          alert("حدث خطأ عند إضافة البيانات.");
+        } else {
+          alert("تم إضافة المنتج بنجاح.");
+          document.getElementById("employeeName").value = '';
+          document.getElementById("branchName").value = '';
+          document.getElementById("type").value = 'دخل';
+          document.getElementById("desc").value = '';
+          document.getElementById("amount").value = '';
+        }
+      });
+    }
+  </script>
+</body>
+</html>

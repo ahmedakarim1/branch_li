@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تقرير الإيرادات والخَرْج</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 text-gray-800">
+  <div class="container mx-auto p-6">
+    <h2 class="text-3xl font-bold mb-4 text-center">تقرير الإيرادات والخَرْج</h2>
+
+    <div class="bg-white shadow-md rounded-lg p-4 mb-6 flex flex-wrap gap-4 items-center justify-center">
+      <div>
+        <label class="block text-sm font-medium mb-1">الفرع:</label>
+        <select id="branchFilter" class="rounded border-gray-300 px-3 py-2">
+          <option value="">الكل</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">من:</label>
+        <input type="date" id="startDate" class="rounded border-gray-300 px-3 py-2">
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">إلى:</label>
+        <input type="date" id="endDate" class="rounded border-gray-300 px-3 py-2">
+      </div>
+      <button onclick="applyFilter()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded">عرض التقرير</button>
+    </div>
+
+    <div class="bg-white shadow-md rounded-lg p-4 mb-4 text-lg">
+      <p id="summary">الإجمالي: الدخل = 0.000 د.ب، الخرج = 0.000 د.ب، الصافي = 0.000 د.ب</p>
+    </div>
+
+    <div class="overflow-x-auto bg-white shadow-md rounded-lg mb-8">
+      <table id="reportTable" class="min-w-full table-auto text-sm">
+        <thead class="bg-gray-200 text-gray-700">
+          <tr>
+            <th class="px-4 py-2">التاريخ</th>
+            <th class="px-4 py-2">الفرع</th>
+            <th class="px-4 py-2">النوع</th>
+            <th class="px-4 py-2">الوصف</th>
+            <th class="px-4 py-2">القيمة</th>
+          </tr>
+        </thead>
+        <tbody id="dataBody" class="text-center"></tbody>
+      </table>
+    </div>
+
+    <div class="bg-white shadow-md rounded-lg p-4">
+      <canvas id="summaryChart" height="100"></canvas>
+    </div>
+
+    <div class="bg-white shadow-md rounded-lg p-4 mb-4">
+      <canvas id="employeeChart" height="100"></canvas>
+    </div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyB12tfYkdfVq6xJWyG3aHJkMjQbRgBCCqk",
+      authDomain: "limeted-74dd8.firebaseapp.com",
+      projectId: "limeted-74dd8",
+      storageBucket: "limeted-74dd8.firebasestorage.app",
+      messagingSenderId: "822523906481",
+      appId: "1:822523906481:web:a8673641b56dfd95711590",
+      measurementId: "G-VWD34NDG63"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let allData = [];
+    let chartInstance;
+    let employeeChartInstance;
+
+    db.ref("users").once("value").then(usersSnap => {
+      const users = usersSnap.val() || {};
+      const branches = new Set();
+
+      db.ref("branches").on("value", snapshot => {
+        const tbody = document.getElementById("dataBody");
+        tbody.innerHTML = "";
+        allData = [];
+
+        snapshot.forEach(branchSnap => {
+          const uid = branchSnap.key;
+          const userInfo = users[uid] || {};
+          const branchName = userInfo.branch || "غير محدد";
+          branches.add(branchName);
+
+          branchSnap.forEach(entry => {
+            const { desc, amount, type, timestamp } = entry.val();
+            if (desc && amount && type && timestamp) {
+              allData.push({ timestamp, branchName, type, desc, amount: parseFloat(amount), employeeName: userInfo.name || "غير معروف" });
+            }
+          });
+        });
+
+        const branchFilter = document.getElementById("branchFilter");
+        branchFilter.innerHTML = '<option value="">الكل</option>';
+        branches.forEach(name => {
+          const option = document.createElement("option");
+          option.value = name;
+          option.textContent = name;
+          branchFilter.appendChild(option);
+        });
+      });
+    });
+
+    function applyFilter() {
+      const tbody = document.getElementById("dataBody");
+      tbody.innerHTML = "";
+      const branch = document.getElementById("branchFilter").value;
+      const start = new Date(document.getElementById("startDate").value);
+      const end = new Date(document.getElementById("endDate").value);
+
+      let totalIn = 0, totalOut = 0;
+      const dailyTotals = {};
+      const employeeTotals = {};
+
+      const filtered = allData.filter(row => {
+        const rowDate = new Date(row.timestamp);
+        const inRange = !isNaN(start) && !isNaN(end) ? rowDate >= start && rowDate <= end : true;
+        const matchesBranch = !branch || row.branchName === branch;
+        return inRange && matchesBranch;
+      });
+
+      filtered.forEach(row => {
+        if (row.type === "دخل") totalIn += row.amount;
+        if (row.type === "خرج") totalOut += row.amount;
+
+        const dateOnly = new Date(row.timestamp).toLocaleDateString();
+        if (!dailyTotals[dateOnly]) dailyTotals[dateOnly] = { in: 0, out: 0 };
+        if (row.type === "دخل") dailyTotals[dateOnly].in += row.amount;
+        if (row.type === "خرج") dailyTotals[dateOnly].out += row.amount;
+
+        const employeeKey = `${row.employeeName} - ${row.branchName}`;
+        if (!employeeTotals[employeeKey]) employeeTotals[employeeKey] = 0;
+        if (row.type === "دخل") employeeTotals[employeeKey] += row.amount;
+        if (row.type === "خرج") employeeTotals[employeeKey] -= row.amount;
+
+        const tr = `<tr>
+          <td class='px-4 py-2 border'>${row.timestamp}</td>
+          <td class='px-4 py-2 border'>${row.branchName}</td>
+          <td class='px-4 py-2 border'>${row.type}</td>
+          <td class='px-4 py-2 border'>${row.desc}</td>
+          <td class='px-4 py-2 border'>${row.amount.toFixed(3)}</td>
+        </tr>`;
+        tbody.innerHTML += tr;
+      });
+
+      const net = totalIn - totalOut;
+      document.getElementById("summary").innerText = `الإجمالي: الدخل = ${totalIn.toFixed(3)} د.ب، الخرج = ${totalOut.toFixed(3)} د.ب، الصافي = ${net.toFixed(3)} د.ب`;
+
+      const labels = Object.keys(dailyTotals);
+      const incomeData = labels.map(date => dailyTotals[date].in);
+      const expenseData = labels.map(date => dailyTotals[date].out);
+      const netData = incomeData.map((inData, index) => inData - expenseData[index]);
+
+      const ctx = document.getElementById("summaryChart").getContext("2d");
+      if (chartInstance) chartInstance.destroy();
+
+      chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'الدخل',
+              data: incomeData,
+              backgroundColor: 'rgba(34,197,94,0.7)'
+            },
+            {
+              label: 'الخرج',
+              data: expenseData,
+              backgroundColor: 'rgba(239,68,68,0.7)'
+            },
+            {
+              label: 'الصافي',
+              data: netData,
+              backgroundColor: 'rgba(59,130,246,0.7)' // اللون الأزرق للصافي
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: 'top' },
+            title: { display: true, text: 'الرسم البياني اليومي للإيرادات والخَرْج والصافي' }
+          },
+          scales: {
+            y: { beginAtZero: true }
+          }
+        }
+      });
+
+      // رسم بياني للموظفين
+      const employeeLabels = Object.keys(employeeTotals);
+      const employeeData = employeeLabels.map(employee => employeeTotals[employee]);
+
+      const employeeCtx = document.getElementById("employeeChart").getContext("2d");
+      if (employeeChartInstance) employeeChartInstance.destroy();
+
+      employeeChartInstance = new Chart(employeeCtx, {
+        type: 'bar',
+        data: {
+          labels: employeeLabels,
+          datasets: [
+            {
+              label: 'الصافي',
+              data: employeeData,
+              backgroundColor: 'rgba(59,130,246,0.7)' // اللون الأزرق للصافي
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: 'top' },
+            title: { display: true, text: 'الرسم البياني للإيرادات والخَرْج لكل موظف' }
+          },
+          scales: {
+            y: { beginAtZero: true }
+          }
+        }
+      });
+    }
+  </script>
+</body>
+</html>
