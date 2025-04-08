@@ -106,22 +106,7 @@
       firebase.auth().signOut().then(() => {
         window.location.href = 'login.html';
       });
-    }
-
-    function saveUserInfo() {
-      const name = document.getElementById("userName").value.trim();
-      const branch = document.getElementById("branchName").value.trim();
-      const uid = firebase.auth().currentUser.uid;
-
-      if (!name || !branch) return alert("يرجى إدخال الاسم واسم الفرع.");
-
-      db.ref("users/" + uid).set({ name, branch }).then(() => {
-        alert("تم الحفظ بنجاح");
-        document.getElementById("setupInfo").classList.add("hidden");
-        document.getElementById("mainApp").classList.remove("hidden");
-        startApp(uid, name, branch);
-      });
-    }
+    } 
 
     function startApp(uid, name, branch) {
       currentUserData = { name, branch };
