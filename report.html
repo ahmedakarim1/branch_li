@@ -1,62 +1,65 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>تقرير الإيرادات والخَرْج</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>لوحة المدير - جميع الفروع</title>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
 </head>
-<body class="bg-gray-100 text-gray-800">
-  <div class="container mx-auto p-6">
-    <h2 class="text-3xl font-bold mb-4 text-center">تقرير الإيرادات والخَرْج</h2>
+<body class="bg-gradient-to-b from-gray-100 to-gray-200 text-gray-800 min-h-screen">
 
-    <div class="bg-white shadow-md rounded-lg p-4 mb-6 flex flex-wrap gap-4 items-center justify-center">
+  <div class="max-w-6xl mx-auto px-4 py-6">
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-3xl font-bold text-blue-800">📊 لوحة المدير - جميع الفروع</h1>
+      <button onclick="logout()" class="bg-red-600 hover:bg-red-700 transition px-5 py-2 text-white rounded-lg shadow-md">
+        تسجيل الخروج
+      </button>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white shadow rounded-lg p-4 mb-6 flex flex-wrap items-center justify-between gap-4">
       <div>
-        <label class="block text-sm font-medium mb-1">الفرع:</label>
-        <select id="branchFilter" class="rounded border-gray-300 px-3 py-2">
+        <label class="block text-sm text-gray-700 mb-1">تصفية حسب الفرع:</label>
+        <select id="branchFilter" class="border rounded px-3 py-2">
           <option value="">الكل</option>
         </select>
       </div>
       <div>
-        <label class="block text-sm font-medium mb-1">من:</label>
-        <input type="date" id="startDate" class="rounded border-gray-300 px-3 py-2">
+        <label class="block text-sm text-gray-700 mb-1">من:</label>
+        <input type="date" id="startDate" class="border rounded px-3 py-2" />
       </div>
       <div>
-        <label class="block text-sm font-medium mb-1">إلى:</label>
-        <input type="date" id="endDate" class="rounded border-gray-300 px-3 py-2">
+        <label class="block text-sm text-gray-700 mb-1">إلى:</label>
+        <input type="date" id="endDate" class="border rounded px-3 py-2" />
       </div>
-      <button onclick="applyFilter()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded">عرض التقرير</button>
+      <div class="flex gap-2">
+        <button onclick="applyFilter()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow">
+          تصفية
+        </button>
+        <button onclick="copyTable()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg shadow">
+          نسخ الجدول
+        </button>
+      </div>
     </div>
 
-    <div class="bg-white shadow-md rounded-lg p-4 mb-4 text-lg">
-      <p id="summary">الإجمالي: الدخل = 0.000 د.ب، الخرج = 0.000 د.ب، الصافي = 0.000 د.ب</p>
-    </div>
-
-    <div class="overflow-x-auto bg-white shadow-md rounded-lg mb-8">
-      <table id="reportTable" class="min-w-full table-auto text-sm">
-        <thead class="bg-gray-200 text-gray-700">
+    <!-- Table -->
+    <div class="overflow-x-auto bg-white rounded-lg shadow">
+      <table id="allData" class="min-w-full text-sm text-center">
+        <thead class="bg-blue-50 text-blue-800 font-semibold">
           <tr>
-            <th class="px-4 py-2">التاريخ</th>
-            <th class="px-4 py-2">الفرع</th>
-            <th class="px-4 py-2">النوع</th>
-            <th class="px-4 py-2">الوصف</th>
-            <th class="px-4 py-2">القيمة</th>
+            <th class="py-3 px-4 border">التاريخ</th>
+            <th class="py-3 px-4 border">اسم الموظف</th>
+            <th class="py-3 px-4 border">الفرع</th>
+            <th class="py-3 px-4 border">النوع</th>
+            <th class="py-3 px-4 border">الوصف</th>
+            <th class="py-3 px-4 border">القيمة (دينار)</th>
           </tr>
         </thead>
-        <tbody id="dataBody" class="text-center"></tbody>
+        <tbody id="dataBody" class="text-gray-800 bg-white divide-y"></tbody>
       </table>
-    </div>
-
-    <div class="bg-white shadow-md rounded-lg p-4">
-      <canvas id="summaryChart" height="100"></canvas>
-    </div>
-
-    <div class="bg-white shadow-md rounded-lg p-4 mb-4">
-      <canvas id="employeeChart" height="100"></canvas>
     </div>
   </div>
 
@@ -70,12 +73,28 @@
       appId: "1:822523906481:web:a8673641b56dfd95711590",
       measurementId: "G-VWD34NDG63"
     };
+
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+    const auth = firebase.auth();
+
+    auth.onAuthStateChanged(user => {
+      if (!user || user.email !== "ahm7777ed20@gmail.com") {
+        alert("غير مصرح لك بالدخول لهذه الصفحة.");
+        window.location.href = "index.html";
+      }
+    });
+
+    function logout() {
+      auth.signOut().then(() => {
+        window.location.href = "index.html";
+      }).catch(err => {
+        console.error("Logout Error:", err);
+        alert("حدث خطأ أثناء تسجيل الخروج.");
+      });
+    }
 
     let allData = [];
-    let chartInstance;
-    let employeeChartInstance;
 
     db.ref("users").once("value").then(usersSnap => {
       const users = usersSnap.val() || {};
@@ -89,13 +108,21 @@
         snapshot.forEach(branchSnap => {
           const uid = branchSnap.key;
           const userInfo = users[uid] || {};
+          const employeeName = userInfo.name || "غير معروف";
           const branchName = userInfo.branch || "غير محدد";
           branches.add(branchName);
 
           branchSnap.forEach(entry => {
             const { desc, amount, type, timestamp } = entry.val();
             if (desc && amount && type && timestamp) {
-              allData.push({ timestamp, branchName, type, desc, amount: parseFloat(amount), employeeName: userInfo.name || "غير معروف" });
+              allData.push({
+                timestamp,
+                employeeName,
+                branchName,
+                type,
+                desc,
+                amount: parseFloat(amount)
+              });
             }
           });
         });
@@ -108,126 +135,64 @@
           option.textContent = name;
           branchFilter.appendChild(option);
         });
+
+        renderTable(allData);
       });
     });
 
-    function applyFilter() {
+    function renderTable(data) {
       const tbody = document.getElementById("dataBody");
       tbody.innerHTML = "";
-      const branch = document.getElementById("branchFilter").value;
-      const start = new Date(document.getElementById("startDate").value);
-      const end = new Date(document.getElementById("endDate").value);
+      data.forEach(row => {
+        const tr = `<tr>
+          <td class='py-2 px-4 border'>${formatDate(row.timestamp)}</td>
+          <td class='py-2 px-4 border'>${row.employeeName}</td>
+          <td class='py-2 px-4 border'>${row.branchName}</td>
+          <td class='py-2 px-4 border'>${row.type}</td>
+          <td class='py-2 px-4 border'>${row.desc}</td>
+          <td class='py-2 px-4 border'>${row.amount.toFixed(3)}</td>
+        </tr>`;
+        tbody.innerHTML += tr;
+      });
+    }
 
-      let totalIn = 0, totalOut = 0;
-      const dailyTotals = {};
-      const employeeTotals = {};
+    function applyFilter() {
+      const branch = document.getElementById("branchFilter").value;
+      const startInput = document.getElementById("startDate").value;
+      const endInput = document.getElementById("endDate").value;
+
+      const start = startInput ? new Date(startInput + 'T00:00:00') : null;
+      const end = endInput ? new Date(endInput + 'T23:59:59') : null;
 
       const filtered = allData.filter(row => {
         const rowDate = new Date(row.timestamp);
-        const inRange = !isNaN(start) && !isNaN(end) ? rowDate >= start && rowDate <= end : true;
+        const inRange = (!start || rowDate >= start) && (!end || rowDate <= end);
         const matchesBranch = !branch || row.branchName === branch;
         return inRange && matchesBranch;
       });
 
-      filtered.forEach(row => {
-        if (row.type === "دخل") totalIn += row.amount;
-        if (row.type === "خرج") totalOut += row.amount;
+      renderTable(filtered);
+    }
 
-        const dateOnly = new Date(row.timestamp).toLocaleDateString();
-        if (!dailyTotals[dateOnly]) dailyTotals[dateOnly] = { in: 0, out: 0 };
-        if (row.type === "دخل") dailyTotals[dateOnly].in += row.amount;
-        if (row.type === "خرج") dailyTotals[dateOnly].out += row.amount;
+    function copyTable() {
+      const range = document.createRange();
+      range.selectNode(document.getElementById("allData"));
+      window.getSelection().removeAllRanges();
+      window.getSelection().addRange(range);
+      document.execCommand("copy");
+      alert("تم نسخ الجدول بنجاح!");
+    }
 
-        const employeeKey = `${row.employeeName} - ${row.branchName}`;
-        if (!employeeTotals[employeeKey]) employeeTotals[employeeKey] = 0;
-        if (row.type === "دخل") employeeTotals[employeeKey] += row.amount;
-        if (row.type === "خرج") employeeTotals[employeeKey] -= row.amount;
+    function formatDate(rawTimestamp) {
+      const date = new Date(rawTimestamp);
+      if (isNaN(date.getTime())) return rawTimestamp;
 
-        const tr = `<tr>
-          <td class='px-4 py-2 border'>${row.timestamp}</td>
-          <td class='px-4 py-2 border'>${row.branchName}</td>
-          <td class='px-4 py-2 border'>${row.type}</td>
-          <td class='px-4 py-2 border'>${row.desc}</td>
-          <td class='px-4 py-2 border'>${row.amount.toFixed(3)}</td>
-        </tr>`;
-        tbody.innerHTML += tr;
-      });
+      const day = date.getDate();
+      const month = date.getMonth() + 1;
+      const year = date.getFullYear();
+      const time = date.toLocaleTimeString('en-US');
 
-      const net = totalIn - totalOut;
-      document.getElementById("summary").innerText = `الإجمالي: الدخل = ${totalIn.toFixed(3)} د.ب، الخرج = ${totalOut.toFixed(3)} د.ب، الصافي = ${net.toFixed(3)} د.ب`;
-
-      const labels = Object.keys(dailyTotals);
-      const incomeData = labels.map(date => dailyTotals[date].in);
-      const expenseData = labels.map(date => dailyTotals[date].out);
-      const netData = incomeData.map((inData, index) => inData - expenseData[index]);
-
-      const ctx = document.getElementById("summaryChart").getContext("2d");
-      if (chartInstance) chartInstance.destroy();
-
-      chartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: labels,
-          datasets: [
-            {
-              label: 'الدخل',
-              data: incomeData,
-              backgroundColor: 'rgba(34,197,94,0.7)'
-            },
-            {
-              label: 'الخرج',
-              data: expenseData,
-              backgroundColor: 'rgba(239,68,68,0.7)'
-            },
-            {
-              label: 'الصافي',
-              data: netData,
-              backgroundColor: 'rgba(59,130,246,0.7)' // اللون الأزرق للصافي
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: { position: 'top' },
-            title: { display: true, text: 'الرسم البياني اليومي للإيرادات والخَرْج والصافي' }
-          },
-          scales: {
-            y: { beginAtZero: true }
-          }
-        }
-      });
-
-      // رسم بياني للموظفين
-      const employeeLabels = Object.keys(employeeTotals);
-      const employeeData = employeeLabels.map(employee => employeeTotals[employee]);
-
-      const employeeCtx = document.getElementById("employeeChart").getContext("2d");
-      if (employeeChartInstance) employeeChartInstance.destroy();
-
-      employeeChartInstance = new Chart(employeeCtx, {
-        type: 'bar',
-        data: {
-          labels: employeeLabels,
-          datasets: [
-            {
-              label: 'الصافي',
-              data: employeeData,
-              backgroundColor: 'rgba(59,130,246,0.7)' // اللون الأزرق للصافي
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: { position: 'top' },
-            title: { display: true, text: 'الرسم البياني للإيرادات والخَرْج لكل موظف' }
-          },
-          scales: {
-            y: { beginAtZero: true }
-          }
-        }
-      });
+      return `${month}/${day}/${year} ${time}`;
     }
   </script>
 </body>
