@@ -61,27 +61,30 @@
       document.getElementById("registerForm").classList.toggle("hidden");
     }
 
-    function login() {
+function login() {
       const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-      firebase.auth().signInWithEmailAndPassword(email, password)
-        .then(userCredential => {
-          const user = userCredential.user;
-          if (!user.emailVerified) {
-            document.getElementById("status").innerText = "يرجى التحقق من بريدك الإلكتروني أولاً.";
-            firebase.auth().signOut();
-            return;
-          }
-          if (email === "ahm7777ed20@gmail.com") {
-            window.location.href = "manager.html";
-          } else {
-            window.location.href = "branch.html";
-          }
-        })
-        .catch(error => {
-          document.getElementById("status").innerText = "خطأ: " + error.message;
-        });
+const password = document.getElementById("password").value;
+
+firebase.auth().signInWithEmailAndPassword(email, password)
+  .then(userCredential => {
+    const user = userCredential.user;
+    const adminEmails = ["ahm7777ed20@gmail.com", "hussein84888@gmail.com", "example3@gmail.com"];
+    
+    if (!user.emailVerified) {
+      alert("يرجى تفعيل البريد الإلكتروني أولاً.");
+      return;
     }
+
+    if (adminEmails.includes(email)) {
+      window.location.href = "manager.html";
+    } else {
+      window.location.href = "branch.html";
+    }
+  })
+  .catch(err => {
+    document.getElementById("loginStatus").innerText = err.message;
+  });}
+
 
     function registerUser() {
       const email = document.getElementById("regEmail").value;
