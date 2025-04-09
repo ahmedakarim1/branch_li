@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ar">
 <head>
@@ -11,46 +12,70 @@
 </head>
 <body class="bg-gray-100 min-h-screen">
   <div class="max-w-4xl mx-auto p-4">
-    <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
+    <div class="flex justify-between items-center mb-4">
       <h2 id="welcome" class="text-xl font-bold text-gray-800">مرحباً</h2>
-      <button onclick="logout()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">تسجيل الخروج</button>
+      <button onclick="logout()" class="bg-red-600 text-white px-4 py-2 rounded">تسجيل الخروج</button>
     </div>
 
-    <div id="mainApp" class="bg-white p-6 rounded-lg shadow-md mt-4">
+    <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+      <h3 class="text-lg font-semibold mb-4">إضافة دخل/مصروف</h3>
       <div class="grid gap-4 mb-4">
         <div>
-          <label class="block text-sm text-gray-700 mb-1">الوصف</label>
-          <input type="text" id="desc" class="w-full px-4 py-2 border rounded-md" />
+          <label class="block text-sm">الوصف</label>
+          <input id="desc" type="text" class="w-full px-3 py-2 border rounded" />
         </div>
         <div>
-          <label class="block text-sm text-gray-700 mb-1">القيمة (دينار)</label>
-          <input type="number" id="amount" step="0.001" class="w-full px-4 py-2 border rounded-md" />
+          <label class="block text-sm">القيمة (دينار)</label>
+          <input id="amount" type="number" step="0.001" class="w-full px-3 py-2 border rounded" />
         </div>
         <div>
-          <label class="block text-sm text-gray-700 mb-1">النوع</label>
-          <select id="type" class="w-full px-4 py-2 border rounded-md">
+          <label class="block text-sm">النوع</label>
+          <select id="type" class="w-full px-3 py-2 border rounded">
             <option value="دخل">دخل</option>
             <option value="مصروف">مصروف</option>
           </select>
         </div>
-        <button onclick="addEntry()" id="addBtn" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-md">إضافة</button>
+        <button onclick="addEntry()" class="w-full bg-green-600 text-white py-2 rounded">إضافة</button>
       </div>
+    </div>
 
-      <div class="overflow-x-auto mt-6">
-        <table class="min-w-full text-sm text-center border">
-          <thead class="bg-gray-200">
-            <tr>
-              <th class="px-4 py-2">اسم الموظف</th>
-              <th class="px-4 py-2">اسم الفرع</th>
-              <th class="px-4 py-2">الوصف</th>
-              <th class="px-4 py-2">القيمة</th>
-              <th class="px-4 py-2">النوع</th>
-              <th class="px-4 py-2">التاريخ</th>
-            </tr>
-          </thead>
-          <tbody id="dataBody" class="bg-white"></tbody>
-        </table>
+    <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+      <button onclick="toggleDebtForm()" class="bg-yellow-500 text-white px-4 py-2 rounded mb-4">➕ إضافة مديونية</button>
+      <div id="debtForm" class="grid gap-4 mb-4 hidden">
+        <div>
+          <label class="block text-sm">اسم المدين</label>
+          <input id="debtorName" type="text" class="w-full px-3 py-2 border rounded" />
+        </div>
+        <div>
+          <label class="block text-sm">رقم الهاتف</label>
+          <input id="debtorPhone" type="text" class="w-full px-3 py-2 border rounded" />
+        </div>
+        <div>
+          <label class="block text-sm">المبلغ (دينار)</label>
+          <input id="debtorAmount" type="number" step="0.001" class="w-full px-3 py-2 border rounded" />
+        </div>
+        <div>
+          <label class="block text-sm">ملاحظات</label>
+          <input id="debtorNotes" type="text" class="w-full px-3 py-2 border rounded" />
+        </div>
+        <button onclick="addDebt()" class="w-full bg-blue-600 text-white py-2 rounded">حفظ المديونية</button>
       </div>
+    </div>
+
+    <div class="overflow-x-auto bg-white p-4 rounded-lg shadow-md">
+      <table class="min-w-full text-sm text-center">
+        <thead class="bg-gray-200">
+          <tr>
+            <th>الموظف</th>
+            <th>الفرع</th>
+            <th>الوصف</th>
+            <th>القيمة</th>
+            <th>النوع</th>
+            <th>التاريخ</th>
+          </tr>
+        </thead>
+        <tbody id="dataBody"></tbody>
+      </table>
     </div>
   </div>
 
@@ -58,30 +83,25 @@
     const firebaseConfig = {
       apiKey: "AIzaSyB12tfYkdfVq6xJWyG3aHJkMjQbRgBCCqk",
       authDomain: "limeted-74dd8.firebaseapp.com",
+      databaseURL: "https://limeted-74dd8-default-rtdb.firebaseio.com",
       projectId: "limeted-74dd8",
-      storageBucket: "limeted-74dd8.firebasestorage.app",
+      storageBucket: "limeted-74dd8.appspot.com",
       messagingSenderId: "822523906481",
-      appId: "1:822523906481:web:a8673641b56dfd95711590",
-      measurementId: "G-VWD34NDG63"
+      appId: "1:822523906481:web:a8673641b56dfd95711590"
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+    const auth = firebase.auth();
 
     let currentUserData = { name: "", branch: "" };
 
     firebase.auth().onAuthStateChanged(user => {
       if (user) {
-        const uid = user.uid;
-        db.ref("users/" + uid).once("value").then(snapshot => {
-          if (snapshot.exists()) {
-            const data = snapshot.val();
-            currentUserData = data;
-            document.getElementById("mainApp").classList.remove("hidden");
-            startApp(uid, data.name, data.branch);
-          } else {
-            alert("يرجى إنشاء الحساب بشكل صحيح أولاً.");
-            firebase.auth().signOut();
-          }
+        db.ref("users/" + user.uid).once("value").then(snapshot => {
+          const data = snapshot.val();
+          currentUserData = data;
+          document.getElementById("welcome").innerText = "مرحباً " + data.name + " - فرع " + data.branch;
+          loadEntries(user.uid);
         });
       } else {
         window.location.href = "index.html";
@@ -89,58 +109,77 @@
     });
 
     function logout() {
-      firebase.auth().signOut().then(() => {
-        window.location.href = 'index.html';
-      });
+      auth.signOut().then(() => window.location.href = "index.html");
     }
 
-    function startApp(uid, name, branch) {
-      currentUserData = { name, branch };
-      document.getElementById("welcome").innerText = `مرحباً ${name} - فرع ${branch}`;
+    function addEntry() {
+      const desc = document.getElementById("desc").value;
+      const amount = document.getElementById("amount").value;
+      const type = document.getElementById("type").value;
+      const now = new Date();
+      const timestamp = now.toISOString();
 
-      const branchRef = db.ref("branches/" + uid);
+      if (!desc || !amount) return alert("يرجى إدخال كافة البيانات");
 
-      window.addEntry = function () {
-        const desc = document.getElementById("desc").value;
-        const amount = document.getElementById("amount").value;
-        const type = document.getElementById("type").value;
+      db.ref("branches/" + auth.currentUser.uid).push({
+        desc,
+        amount,
+        type,
+        timestamp,
+        employeeName: currentUserData.name,
+        branchName: currentUserData.branch
+      });
 
-        if (!desc || !amount) return alert("يرجى إدخال الوصف والقيمة.");
+      document.getElementById("desc").value = "";
+      document.getElementById("amount").value = "";
+    }
 
-        const now = new Date();
-        const timestamp = `${now.getMonth() + 1}/${now.getDate()}/${now.getFullYear()} ${now.toLocaleTimeString('en-US')}`;
-
-        branchRef.push({
-          desc,
-          amount,
-          type,
-          timestamp,
-          employeeName: currentUserData.name,
-          branchName: currentUserData.branch
-        });
-
-        document.getElementById("desc").value = "";
-        document.getElementById("amount").value = "";
-      };
-
-      branchRef.on("value", snapshot => {
+    function loadEntries(uid) {
+      db.ref("branches/" + uid).on("value", snapshot => {
         const tbody = document.getElementById("dataBody");
         tbody.innerHTML = "";
         snapshot.forEach(entry => {
-          const { desc, amount, type, timestamp, employeeName, branchName } = entry.val();
-          if (desc && amount && type && timestamp) {
-            const row = `<tr class='border-t'>
-              <td class='px-4 py-2'>${employeeName || "-"}</td>
-              <td class='px-4 py-2'>${branchName || "-"}</td>
-              <td class='px-4 py-2'>${desc}</td>
-              <td class='px-4 py-2'>${amount}</td>
-              <td class='px-4 py-2'>${type}</td>
-              <td class='px-4 py-2'>${timestamp}</td>
-            </tr>`;
-            tbody.innerHTML += row;
-          }
+          const data = entry.val();
+          const tr = `<tr class='border-t'>
+            <td>${data.employeeName}</td>
+            <td>${data.branchName}</td>
+            <td>${data.desc}</td>
+            <td>${data.amount}</td>
+            <td>${data.type}</td>
+            <td>${new Date(data.timestamp).toLocaleString()}</td>
+          </tr>`;
+          tbody.innerHTML += tr;
         });
       });
+    }
+
+    function toggleDebtForm() {
+      document.getElementById("debtForm").classList.toggle("hidden");
+    }
+
+    function addDebt() {
+      const name = document.getElementById("debtorName").value;
+      const phone = document.getElementById("debtorPhone").value;
+      const amount = document.getElementById("debtorAmount").value;
+      const notes = document.getElementById("debtorNotes").value;
+
+      if (!name || !phone || !amount) return alert("يرجى إدخال الاسم والهاتف والمبلغ");
+
+      db.ref("debts").push({
+        name,
+        phone,
+        amount: parseFloat(amount),
+        notes,
+        branch: currentUserData.branch,
+        createdAt: new Date().toISOString()
+      });
+
+      document.getElementById("debtorName").value = "";
+      document.getElementById("debtorPhone").value = "";
+      document.getElementById("debtorAmount").value = "";
+      document.getElementById("debtorNotes").value = "";
+      document.getElementById("debtForm").classList.add("hidden");
+      alert("تمت إضافة المديونية بنجاح");
     }
   </script>
 </body>
