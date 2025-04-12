@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ar">
 <head>
@@ -10,13 +11,11 @@
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
 </head>
 <body class="bg-gray-100 text-gray-800 min-h-screen">
-
   <div class="max-w-6xl mx-auto px-4 py-6">
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-3xl font-bold text-blue-800">📊 لوحة المدير - جميع الفروع</h1>
-      <button onclick="logout()" class="bg-red-600 hover:bg-red-700 transition px-5 py-2 text-white rounded-lg shadow-md">
-        تسجيل الخروج
-      </button>
+      <button onclick="logout()" class="bg-red-600 hover:bg-red-700 transition px-5 py-2 text-white rounded-lg shadow-md">تسجيل الخروج</button>
+      
     </div>
 
     <!-- فلاتر -->
@@ -45,17 +44,13 @@
         </select>
       </div>
       <div class="flex gap-2">
-        <button onclick="applyFilter()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow">
-          تصفية
-        </button>
-        <button onclick="copyTable()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg shadow">
-          نسخ الجدول
-        </button>
+        <button onclick="applyFilter()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow">تصفية</button>
+        <button onclick="copyTable()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg shadow">نسخ الجدول</button>
       </div>
     </div>
 
-    <!-- الجدول -->
-    <div class="overflow-x-auto bg-white rounded-lg shadow">
+    <!-- جدول العمليات -->
+    <div class="overflow-x-auto bg-white rounded-lg shadow mb-10">
       <table id="allData" class="min-w-full text-sm text-center">
         <thead class="bg-blue-50 text-blue-800 font-semibold">
           <tr>
@@ -70,6 +65,26 @@
         <tbody id="dataBody" class="text-gray-800 bg-white divide-y"></tbody>
       </table>
     </div>
+
+    <!-- جدول الديون -->
+    <div class="bg-white rounded-lg shadow p-4 overflow-x-auto">
+      <h2 class="text-xl font-bold text-blue-800 mb-4">📄 جدول المديونية</h2>
+      <table class="min-w-full text-sm text-center border" id="debtsTable">
+        <thead class="bg-blue-100 text-blue-800">
+          <tr>
+            <th class="px-4 py-2 border">👤 الاسم</th>
+            <th class="px-4 py-2 border">📞 الهاتف</th>
+            <th class="px-4 py-2 border">🏢 الفرع</th>
+            <th class="px-4 py-2 border">👨‍💼 الموظف</th>
+            <th class="px-4 py-2 border">💰 المبلغ</th>
+            <th class="px-4 py-2 border">💵 المدفوع</th>
+            <th class="px-4 py-2 border">📝 الملاحظات</th>
+            <th class="px-4 py-2 border">✔️ تحديث</th>
+          </tr>
+        </thead>
+        <tbody id="debtsBody" class="bg-white divide-y text-gray-700"></tbody>
+      </table>
+    </div>
   </div>
 
   <script>
@@ -82,7 +97,6 @@
       appId: "1:822523906481:web:a8673641b56dfd95711590",
       measurementId: "G-VWD34NDG63"
     };
-
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     const auth = firebase.auth();
@@ -116,18 +130,20 @@
           branches.add(branchName);
 
           branchSnap.forEach(entry => {
-            const { desc, amount, type, timestamp } = entry.val();
-            if (desc && amount && type && timestamp) {
-              allData.push({
-                timestamp,
-                employeeName,
-                branchName,
-                type,
-                desc,
-                amount: parseFloat(amount)
-              });
-            }
-          });
+  const { desc, amount, type, timestamp } = entry.val();
+  const dateValid = timestamp && !isNaN(new Date(timestamp).getTime());
+  if (desc && amount && type && dateValid) {
+    allData.push({
+      timestamp,
+      employeeName,
+      branchName,
+      type,
+      desc,
+      amount: parseFloat(amount)
+    });
+  }
+});
+
         });
 
         const branchFilter = document.getElementById("branchFilter");
@@ -140,6 +156,32 @@
         });
 
         renderTable(allData);
+      });
+
+      // Load debts
+      db.ref("debts").on("value", snapshot => {
+        const body = document.getElementById("debtsBody");
+        body.innerHTML = "";
+        snapshot.forEach(child => {
+          const key = child.key;
+          const data = child.val();
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td class="border px-2 py-1">${data.name || ""}</td>
+            <td class="border px-2 py-1">${data.phone || ""}</td>
+            <td class="border px-2 py-1">${data.branch || ""}</td>
+            <td class="border px-2 py-1">${data.employee || ""}</td>
+            <td class="border px-2 py-1">${parseFloat(data.amount).toFixed(3)}</td>
+            <td class="border px-2 py-1">
+              <input type="number" id="paid-${key}" value="${parseFloat(data.paid || 0).toFixed(3)}" class="border rounded px-2 py-1 w-24" />
+            </td>
+            <td class="border px-2 py-1">${data.notes || ""}</td>
+            <td class="border px-2 py-1">
+              <button onclick="updatePaid('${key}')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded">تحديث</button>
+            </td>
+          `;
+          body.appendChild(row);
+        });
       });
     });
 
@@ -164,20 +206,32 @@
 
     function applyFilter() {
       const branch = document.getElementById("branchFilter").value;
-      const startInput = document.getElementById("startDate").value;
-      const endInput = document.getElementById("endDate").value;
-
-      const start = startInput ? new Date(startInput + 'T00:00:00') : null;
-      const end = endInput ? new Date(endInput + 'T23:59:59') : null;
+      const start = new Date(document.getElementById("startDate").value);
+      const end = new Date(document.getElementById("endDate").value + 'T23:59:59');
 
       const filtered = allData.filter(row => {
         const rowDate = new Date(row.timestamp);
-        const inRange = (!start || rowDate >= start) && (!end || rowDate <= end);
-        const matchesBranch = !branch || row.branchName === branch;
-        return inRange && matchesBranch;
+        return (!isNaN(start) ? rowDate >= start : true) &&
+               (!isNaN(end) ? rowDate <= end : true) &&
+               (!branch || row.branchName === branch);
       });
 
       renderTable(filtered);
+    }
+
+    function quickFilter(option) {
+      const now = new Date();
+      let start;
+      const end = new Date();
+
+      if (option === "day") start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      else if (option === "month") start = new Date(now.getFullYear(), now.getMonth(), 1);
+      else if (option === "year") start = new Date(now.getFullYear(), 0, 1);
+      else return;
+
+      document.getElementById("startDate").value = start.toISOString().split("T")[0];
+      document.getElementById("endDate").value = end.toISOString().split("T")[0];
+      applyFilter();
     }
 
     function copyTable() {
@@ -189,33 +243,24 @@
       alert("تم نسخ الجدول بنجاح!");
     }
 
+    function updatePaid(id) {
+      const paid = parseFloat(document.getElementById("paid-" + id).value);
+      if (isNaN(paid)) return alert("يرجى إدخال رقم صحيح.");
+      db.ref("debts/" + id).update({ paid }).then(() => {
+        alert("تم تحديث المبلغ المدفوع.");
+      });
+    }
+
     function formatDate(raw) {
       const date = new Date(raw);
-      if (isNaN(date.getTime())) return raw;
-      const d = date.getDate(), m = date.getMonth() + 1, y = date.getFullYear();
-      const t = date.toLocaleTimeString('en-US');
-      return `${m}/${d}/${y} ${t}`;
+      return isNaN(date.getTime()) ? raw :
+        `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()} ${date.toLocaleTimeString('en-US')}`;
     }
 
     function formatAmount(num) {
       return num.toLocaleString('en-US', { minimumFractionDigits: 3 });
     }
-
-    function quickFilter(option) {
-      const now = new Date();
-      let start, end = new Date();
-      if (option === 'day') {
-        start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      } else if (option === 'month') {
-        start = new Date(now.getFullYear(), now.getMonth(), 1);
-      } else if (option === 'year') {
-        start = new Date(now.getFullYear(), 0, 1);
-      } else return;
-
-      document.getElementById("startDate").value = start.toISOString().split("T")[0];
-      document.getElementById("endDate").value = end.toISOString().split("T")[0];
-      applyFilter();
-    }
   </script>
 </body>
 </html>
+
