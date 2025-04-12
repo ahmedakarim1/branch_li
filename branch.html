@@ -15,6 +15,10 @@
     <div class="flex justify-between items-center mb-4">
       <h2 id="welcome" class="text-xl font-bold text-gray-800">مرحباً</h2>
       <button onclick="logout()" class="bg-red-600 text-white px-4 py-2 rounded">تسجيل الخروج</button>
+      <a href="my-debts.html" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+        جدول المديونين
+      </a>
+      
     </div>
 
     <div class="bg-white p-6 rounded-lg shadow-md mb-6">
@@ -113,26 +117,26 @@
     }
 
     function addEntry() {
-      const desc = document.getElementById("desc").value;
-      const amount = document.getElementById("amount").value;
-      const type = document.getElementById("type").value;
-      const now = new Date();
-      const timestamp = now.toISOString();
+    const desc = document.getElementById("desc").value;
+    const amount = document.getElementById("amount").value;
+    const type = document.getElementById("type").value;
+    const now = new Date();
+    const timestamp = now.toISOString(); // ✅ صيغة صحيحة وآمنة
 
-      if (!desc || !amount) return alert("يرجى إدخال كافة البيانات");
+    if (!desc || !amount) return alert("يرجى إدخال كافة البيانات");
 
-      db.ref("branches/" + auth.currentUser.uid).push({
-        desc,
-        amount,
-        type,
-        timestamp,
-        employeeName: currentUserData.name,
-        branchName: currentUserData.branch
-      });
+    db.ref("branches/" + auth.currentUser.uid).push({
+      desc,
+      amount,
+      type,
+      timestamp,
+      employeeName: currentUserData.name,
+      branchName: currentUserData.branch
+    });
 
-      document.getElementById("desc").value = "";
-      document.getElementById("amount").value = "";
-    }
+    document.getElementById("desc").value = "";
+    document.getElementById("amount").value = "";
+  }
 
     function loadEntries(uid) {
       db.ref("branches/" + uid).on("value", snapshot => {
@@ -158,29 +162,35 @@
     }
 
     function addDebt() {
-      const name = document.getElementById("debtorName").value;
-      const phone = document.getElementById("debtorPhone").value;
-      const amount = document.getElementById("debtorAmount").value;
-      const notes = document.getElementById("debtorNotes").value;
+  const name = document.getElementById("debtorName").value;
+  const phone = document.getElementById("debtorPhone").value;
+  const amount = document.getElementById("debtorAmount").value;
+  const notes = document.getElementById("debtorNotes").value;
 
-      if (!name || !phone || !amount) return alert("يرجى إدخال الاسم والهاتف والمبلغ");
+  if (!name || !phone || !amount) return alert("يرجى إدخال الاسم والهاتف والمبلغ");
 
-      db.ref("debts").push({
-        name,
-        phone,
-        amount: parseFloat(amount),
-        notes,
-        branch: currentUserData.branch,
-        createdAt: new Date().toISOString()
-      });
+  const uid = firebase.auth().currentUser.uid;
 
-      document.getElementById("debtorName").value = "";
-      document.getElementById("debtorPhone").value = "";
-      document.getElementById("debtorAmount").value = "";
-      document.getElementById("debtorNotes").value = "";
-      document.getElementById("debtForm").classList.add("hidden");
-      alert("تمت إضافة المديونية بنجاح");
-    }
+  db.ref("debts").push({
+    name,
+    phone,
+    amount: parseFloat(amount),
+    notes,
+    branch: currentUserData.branch,
+    employee: currentUserData.name, // 👈 مهم لعرض الديون في صفحة الموظف
+    uid,                            // 👈 مهم جدًا لتحديد مالك المديونية
+    paid: 0,                        // 👈 مبدئيًا المدفوع صفر
+    createdAt: new Date().toISOString()
+  });
+
+  document.getElementById("debtorName").value = "";
+  document.getElementById("debtorPhone").value = "";
+  document.getElementById("debtorAmount").value = "";
+  document.getElementById("debtorNotes").value = "";
+  document.getElementById("debtForm").classList.add("hidden");
+  alert("تمت إضافة المديونية بنجاح");
+}
+
   </script>
 </body>
 </html>
