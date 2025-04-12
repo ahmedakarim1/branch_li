@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>سجل المديونية - المدير</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+</head>
+<body class="bg-gray-100 text-gray-800 min-h-screen">
+
+  <div class="max-w-7xl mx-auto px-4 py-6">
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-3xl font-bold text-blue-800">📄 سجل المديونيات</h1>
+      <a href="manager.html" class="bg-blue-600 text-white px-5 py-2 rounded shadow">الرجوع للوحة المدير</a>
+    </div>
+
+    <!-- الفلاتر -->
+    <div class="bg-white rounded shadow p-4 flex flex-wrap gap-4 mb-6">
+      <div>
+        <label class="block text-sm mb-1">الفرع:</label>
+        <select id="branchFilter" class="border rounded px-3 py-2">
+          <option value="">الكل</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm mb-1">الموظف:</label>
+        <select id="employeeFilter" class="border rounded px-3 py-2">
+          <option value="">الكل</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- الجدول -->
+    <div class="bg-white rounded shadow overflow-x-auto p-4">
+      <table class="min-w-full text-sm text-center border" id="debtsTable">
+        <thead class="bg-blue-100 text-blue-800">
+          <tr>
+            <th class="border px-3 py-2">👤 الاسم</th>
+            <th class="border px-3 py-2">📞 الهاتف</th>
+            <th class="border px-3 py-2">🏢 الفرع</th>
+            <th class="border px-3 py-2">👨‍💼 الموظف</th>
+            <th class="border px-3 py-2">💰 المبلغ</th>
+            <th class="border px-3 py-2">💵 المدفوع</th>
+            <th class="border px-3 py-2">💳 المتبقي</th>
+            <th class="border px-3 py-2">📝 الملاحظات</th>
+            <th class="border px-3 py-2">📅 التاريخ</th>
+          </tr>
+        </thead>
+        <tbody id="debtsBody" class="bg-white divide-y text-gray-700"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyB12tfYkdfVq6xJWyG3aHJkMjQbRgBCCqk",
+      authDomain: "limeted-74dd8.firebaseapp.com",
+      projectId: "limeted-74dd8",
+      storageBucket: "limeted-74dd8.appspot.com",
+      messagingSenderId: "822523906481",
+      appId: "1:822523906481:web:a8673641b56dfd95711590"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const auth = firebase.auth();
+
+    let debts = [];
+
+    auth.onAuthStateChanged(user => {
+      if (!user || user.email !== "ahm7777ed20@gmail.com") {
+        alert("غير مصرح لك بالدخول");
+        window.location.href = "index.html";
+      } else {
+        loadDebts();
+      }
+    });
+
+    function loadDebts() {
+      db.ref("debts").on("value", snapshot => {
+        debts = [];
+        const branches = new Set();
+        const employees = new Set();
+        snapshot.forEach(child => {
+          const data = child.val();
+          data.id = child.key;
+          data.amount = parseFloat(data.amount || 0);
+          data.paid = parseFloat(data.paid || 0);
+          data.remaining = data.amount - data.paid;
+          debts.push(data);
+          branches.add(data.branch);
+          employees.add(data.employee);
+        });
+
+        fillFilter("branchFilter", branches);
+        fillFilter("employeeFilter", employees);
+        renderTable();
+      });
+    }
+
+    function fillFilter(id, values) {
+      const select = document.getElementById(id);
+      const currentValue = select.value;
+      select.innerHTML = '<option value="">الكل</option>';
+      values.forEach(val => {
+        const option = document.createElement("option");
+        option.value = val;
+        option.textContent = val;
+        select.appendChild(option);
+      });
+      select.value = currentValue;
+      select.onchange = renderTable;
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById("debtsBody");
+      const branch = document.getElementById("branchFilter").value;
+      const employee = document.getElementById("employeeFilter").value;
+
+      tbody.innerHTML = "";
+
+      debts.forEach(d => {
+        if ((branch && d.branch !== branch) || (employee && d.employee !== employee)) return;
+
+        const color = d.remaining <= 0 ? "text-green-600 font-bold" : "text-red-600 font-bold";
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td class="border px-2 py-1">${d.name}</td>
+          <td class="border px-2 py-1">${d.phone}</td>
+          <td class="border px-2 py-1">${d.branch}</td>
+          <td class="border px-2 py-1">${d.employee}</td>
+          <td class="border px-2 py-1">${d.amount.toFixed(3)}</td>
+          <td class="border px-2 py-1">${d.paid.toFixed(3)}</td>
+          <td class="border px-2 py-1 ${color}">${d.remaining.toFixed(3)}</td>
+          <td class="border px-2 py-1">${d.notes || ""}</td>
+          <td class="border px-2 py-1">${new Date(d.createdAt).toLocaleString()}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+  </script>
+</body>
+</html>

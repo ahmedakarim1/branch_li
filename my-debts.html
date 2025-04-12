@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>مديونيتي - الموظف</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+</head>
+<body class="bg-gray-100 text-gray-800 min-h-screen">
+
+  <div class="max-w-6xl mx-auto px-4 py-6">
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-bold text-blue-800">📋 جدول مديونيتي</h1>
+      <a href="branch.html" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg shadow">الرجوع</a>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-4 overflow-x-auto">
+      <table class="min-w-full text-sm text-center border" id="debtsTable">
+        <thead class="bg-blue-100 text-blue-800">
+            <tr>
+              <th class="px-4 py-2 border">👤 الاسم</th>
+              <th class="px-4 py-2 border">📞 الهاتف</th>
+              <th class="px-4 py-2 border">💰 المبلغ</th>
+              <th class="px-4 py-2 border">💵 المدفوع</th>
+              <th class="px-4 py-2 border">💳 المتبقي</th>
+              <th class="px-4 py-2 border">📝 ملاحظات</th>
+              <th class="px-4 py-2 border">📅 التاريخ</th>
+              <th class="px-4 py-2 border">✔️ تحديث</th>
+              <th class="px-4 py-2 border">🗑 حذف</th>
+            </tr>
+          </thead>
+          
+        <tbody id="debtsBody" class="bg-white divide-y text-gray-700"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyB12tfYkdfVq6xJWyG3aHJkMjQbRgBCCqk",
+      authDomain: "limeted-74dd8.firebaseapp.com",
+      projectId: "limeted-74dd8",
+      storageBucket: "limeted-74dd8.firebasestorage.app",
+      messagingSenderId: "822523906481",
+      appId: "1:822523906481:web:a8673641b56dfd95711590",
+      measurementId: "G-VWD34NDG63"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.database();
+
+    let currentEmployee = "";
+
+    auth.onAuthStateChanged(user => {
+      if (!user) return window.location.href = "index.html";
+      db.ref("users/" + user.uid).once("value").then(snap => {
+        const userData = snap.val();
+        currentEmployee = userData.name || user.email;
+        loadMyDebts();
+      });
+    });
+
+    function loadMyDebts() {
+  const body = document.getElementById("debtsBody");
+  db.ref("debts").on("value", snapshot => {
+    body.innerHTML = "";
+    snapshot.forEach(child => {
+      const id = child.key;
+      const data = child.val();
+      if (data.uid === auth.currentUser.uid) {
+        const amount = parseFloat(data.amount || 0);
+        const paid = parseFloat(data.paid || 0);
+        const remaining = amount - paid;
+        const createdAt = new Date(data.createdAt || Date.now()).toLocaleDateString();
+
+        const remainingColor = remaining > 0 ? 'text-red-600 font-semibold' : 'text-green-600 font-semibold';
+
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td class="border px-2 py-1">${data.name || ""}</td>
+          <td class="border px-2 py-1">${data.phone || ""}</td>
+          <td class="border px-2 py-1">${amount.toFixed(3)}</td>
+          <td class="border px-2 py-1">
+            <input type="number" id="paid-${id}" value="${paid.toFixed(3)}"
+                   class="border rounded px-2 py-1 w-24 text-center" />
+          </td>
+          <td class="border px-2 py-1 ${remainingColor}">${remaining.toFixed(3)}</td>
+          <td class="border px-2 py-1">${data.notes || ""}</td>
+          <td class="border px-2 py-1">${createdAt}</td>
+          <td class="border px-2 py-1">
+            <button onclick="updatePaid('${id}', ${amount})"
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded">تحديث</button>
+          </td>
+          <td class="border px-2 py-1">
+            <button onclick="deleteDebt('${id}')" 
+                    class="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded">🗑 حذف</button>
+          </td>
+        `;
+        body.appendChild(row);
+      }
+    });
+  });
+}
+
+
+    function updatePaid(id, amount) {
+      const input = document.getElementById("paid-" + id);
+      const paid = parseFloat(input.value);
+      if (isNaN(paid) || paid < 0 || paid > amount) {
+        alert("يرجى إدخال مبلغ مدفوع صالح (لا يتجاوز إجمالي الدين).");
+        return;
+      }
+
+      db.ref("debts/" + id).update({ paid }).then(() => {
+        alert("تم تحديث المدفوع.");
+      });
+    }
+    function deleteDebt(id) {
+  if (confirm("هل أنت متأكد أنك تريد حذف هذه المديونية؟")) {
+    db.ref("debts/" + id).remove().then(() => {
+      alert("تم حذف المديونية بنجاح.");
+    });
+  }
+}
+
+  </script>
+</body>
+</html>
