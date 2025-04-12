@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>تقرير الإيرادات والمصروفات </title>
+  <title>تقرير الإيرادات والمصروفات</title>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
@@ -11,7 +11,6 @@
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
 <body class="bg-gradient-to-b from-gray-100 to-white text-gray-800 min-h-screen">
-
   <div class="max-w-7xl mx-auto p-6">
     <h2 class="text-4xl font-bold mb-8 text-center text-blue-800 border-b pb-3">📊 تقرير الإيرادات والمصروفات</h2>
 
@@ -68,11 +67,11 @@
       projectId: "limeted-74dd8",
       storageBucket: "limeted-74dd8.firebasestorage.app",
       messagingSenderId: "822523906481",
-      appId: "1:822523906481:web:a8673641b56dfd95711590",
-      measurementId: "G-VWD34NDG63"
+      appId: "1:822523906481:web:a8673641b56dfd95711590"
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+    const auth = firebase.auth();
 
     auth.onAuthStateChanged(user => {
       if (!user || user.email !== "ahm7777ed20@gmail.com") {
@@ -102,7 +101,7 @@
 
           branchSnap.forEach(entry => {
             const { desc, amount, type, timestamp } = entry.val();
-            if (desc && amount && type && timestamp) {
+            if (desc && amount && type && !isNaN(new Date(timestamp).getTime())) {
               allData.push({
                 timestamp,
                 branchName,
@@ -131,7 +130,7 @@
       tbody.innerHTML = "";
       const branch = document.getElementById("branchFilter").value;
       const start = new Date(document.getElementById("startDate").value);
-      const end = new Date(document.getElementById("endDate").value);
+      const end = new Date(document.getElementById("endDate").value + "T23:59:59");
 
       let totalIn = 0, totalOut = 0;
       const dailyTotals = {};
@@ -159,7 +158,7 @@
         if (row.type === "مصروف") employeeTotals[empKey] -= row.amount;
 
         const tr = `<tr>
-          <td class='px-4 py-2 border'>${row.timestamp}</td>
+          <td class='px-4 py-2 border'>${new Date(row.timestamp).toLocaleString()}</td>
           <td class='px-4 py-2 border'>${row.branchName}</td>
           <td class='px-4 py-2 border'>${row.type}</td>
           <td class='px-4 py-2 border'>${row.desc}</td>
@@ -170,7 +169,6 @@
 
       document.getElementById("summary").innerText = `الإجمالي: الدخل = ${totalIn.toFixed(3)} د.ب، المصروف = ${totalOut.toFixed(3)} د.ب، الصافي = ${(totalIn - totalOut).toFixed(3)} د.ب`;
 
-      // Summary Chart
       const labels = Object.keys(dailyTotals);
       const incomeData = labels.map(date => dailyTotals[date].in);
       const expenseData = labels.map(date => dailyTotals[date].out);
@@ -198,7 +196,6 @@
         }
       });
 
-      // Employee Chart
       const empLabels = Object.keys(employeeTotals);
       const empData = empLabels.map(emp => employeeTotals[emp]);
 
